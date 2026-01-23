@@ -12,7 +12,6 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.UUID;
 
 @Service
@@ -48,6 +47,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public UserDto updateUser(UserDto userDto, String userId) {
         UUID uId = UserUtil.parseUUID(userId);
         User existingUser = userRepository
@@ -61,7 +61,6 @@ public class UserServiceImpl implements UserService {
         if (userDto.getEmail() != null) existingUser.setEmail(userDto.getEmail());
 
         existingUser.setEnable(userDto.isEnable());
-        existingUser.setUpdatedAt(Instant.now());
 
         User updatedUser = userRepository.save(existingUser);
         return userMapper.toDto(updatedUser);
