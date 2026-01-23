@@ -43,7 +43,7 @@ public class UserServiceImpl implements UserService {
     public UserDto getUserByEmail(String email) {
         User user = userRepository
                 .findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with given email id "));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with given email id"));
         return userMapper.toDto(user);
     }
 
@@ -58,6 +58,7 @@ public class UserServiceImpl implements UserService {
         if (userDto.getImage() != null) existingUser.setImage(userDto.getImage());
         if (userDto.getProvider() != null) existingUser.setProvider(userDto.getProvider());
         if (userDto.getPassword() != null) existingUser.setPassword(userDto.getPassword());
+        if (userDto.getEmail() != null) existingUser.setEmail(userDto.getEmail());
 
         existingUser.setEnable(userDto.isEnable());
         existingUser.setUpdatedAt(Instant.now());
