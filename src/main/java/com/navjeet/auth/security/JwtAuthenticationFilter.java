@@ -3,6 +3,7 @@ package com.navjeet.auth.security;
 import com.navjeet.auth.repositories.UserRepository;
 import com.navjeet.auth.utils.UserUtil;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jws;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -10,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -19,6 +21,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -33,48 +36,48 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
-
-            if (!jwtService.isAccessToken(token)) {
-                filterChain.doFilter(request, response);
-                return;
-            }
-
             try {
-
+                if (!jwtService.isAccessToken(token)) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
                 Jws<Claims> parse = jwtService.parse(token);
-                Claims claims = parse.getPayload();
-
-
-                String userId = claims.getSubject();
+                Claims payload = parse.getPayload();
+                String userId = payload.getSubject();
                 UUID userUuid = UserUtil.parseUUID(userId);
-
                 userRepository.findById(userUuid).ifPresent(user -> {
 
-                    if (user.isEnable()) {
 
-                        List<SimpleGrantedAuthority> authorities = user.getRoles().stream().map(role -> new SimpleGrantedAuthority(role.getName())).toList();
+                    if (user.isEnable()) {
+                        List<GrantedAuthority> authorities = user.getRoles() == null ? List.of() : user.getRoles().stream().map(role -> new SimpleGrantedAuthority(role.getName())).collect(Collectors.toList());
                         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(user.getEmail(), null, authorities);
                         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                        if (SecurityContextHolder.getContext().getAuthentication() == null)
                             SecurityContextHolder.getContext().setAuthentication(authentication);
-                        }
                     }
 
 
                 });
 
 
+            } catch (ExpiredJwtException e) {
+                request.setAttribute("error", "Token Expired");
+
             } catch (Exception e) {
-                e.printStackTrace();
+                request.setAttribute("error", "Invalid Token");
 
             }
 
+
         }
+
         filterChain.doFilter(request, response);
+
+
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-        return request.getRequestURI().startsWith("/api/v1/auth/login");
+        return request.getRequestURI().startsWith("/api/v1/auth");
     }
 }

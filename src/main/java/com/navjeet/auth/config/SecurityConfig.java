@@ -2,10 +2,12 @@ package com.navjeet.auth.config;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.navjeet.auth.dtos.ApiError;
 import com.navjeet.auth.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -17,9 +19,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Configuration
 @EnableWebSecurity
@@ -45,13 +44,16 @@ public class SecurityConfig {
                         ex.authenticationEntryPoint((request,
                                                      response,
                                                      authException) -> {
-                                    authException.printStackTrace();
                                     response.setStatus(401);
                                     response.setContentType("application/json");
                                     String message = "Unauthorized access: " + authException.getMessage();
-                                    Map<String, String> errorResponse = Map.of("message", message, "status", String.valueOf(401), "statusCode", Integer.toString(401));
+                                    String error = (String) request.getAttribute("error");
+                                    if (error != null) {
+                                        message = error;
+                                    }
+                                    var apiError = ApiError.of(HttpStatus.UNAUTHORIZED.value(), "Unauthorized Access", message, request.getRequestURI(), true);
                                     ObjectMapper objectMapper = new ObjectMapper();
-                                    response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+                                    response.getWriter().write(objectMapper.writeValueAsString(apiError));
                                 }
 
                         )).addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
