@@ -8,8 +8,10 @@ import com.navjeet.auth.entities.User;
 import com.navjeet.auth.mappers.UserMapper;
 import com.navjeet.auth.repositories.RefreshTokenRepository;
 import com.navjeet.auth.repositories.UserRepository;
+import com.navjeet.auth.security.CookieService;
 import com.navjeet.auth.security.JwtService;
 import com.navjeet.auth.services.AuthService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,6 +40,7 @@ public class AuthController {
     private final JwtService jwtService;
     private final UserMapper userMapper;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final CookieService cookieService;
 
 
     private Authentication authenticate(LoginRequest loginRequest) {
@@ -51,7 +54,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<TokenResponse> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<TokenResponse> login(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
 
         Authentication authenticate = authenticate(loginRequest);
         User user = userRepository.findByEmail(loginRequest.email()).orElseThrow(() -> new BadCredentialsException("User not found with given email id"));
@@ -66,6 +69,11 @@ public class AuthController {
 
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user, refreshTokenObject.getJti());
+
+        cookieService.attachRefreshTokenToCookie(response, refreshToken, (int) jwtService.getRefreshTtlSeconds());
+        cookieService.addNoCacheHeaders(response);
+
+
         TokenResponse tokenResponse = TokenResponse.of(accessToken, refreshToken, jwtService.getAccessTtlSeconds(), userMapper.toDto(user));
         return ResponseEntity.ok(tokenResponse);
 
