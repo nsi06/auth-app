@@ -43,12 +43,27 @@ public class JwtService {
     public String generateAccessToken(User user) {
         Instant now = Instant.now();
         List<String> roles = user.getRoles() == null ? List.of() : user.getRoles().stream().map(Role::getName).toList();
-        return Jwts.builder().id(UUID.randomUUID().toString()).subject(user.getId().toString()).issuer(issuer).issuedAt(Date.from(now)).expiration(Date.from(now.plusSeconds(accessTtlSeconds))).claims(Map.of("email", user.getEmail(), "roles", roles, "typ", "access")).signWith(key, Jwts.SIG.HS512).compact();
+        return Jwts.builder()
+                .id(UUID.randomUUID().toString())
+                .subject(user.getId().toString())
+                .issuer(issuer)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusSeconds(accessTtlSeconds)))
+                .claims(Map.of("email", user.getEmail(), "roles", roles, "typ", "access"))
+                .signWith(key, Jwts.SIG.HS512)
+                .compact();
     }
 
     public String generateRefreshToken(User user, String jti) {
         Instant now = Instant.now();
-        return Jwts.builder().id(jti).subject(user.getId().toString()).issuer(issuer).issuedAt(Date.from(now)).expiration(Date.from(now.plusSeconds(refreshTtlSeconds))).claim("typ", "refresh").signWith(key, Jwts.SIG.HS512).compact();
+        return Jwts.builder()
+                .id(jti)
+                .subject(user.getId().toString()).issuer(issuer)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusSeconds(refreshTtlSeconds)))
+                .claim("typ", "refresh")
+                .signWith(key, Jwts.SIG.HS512)
+                .compact();
     }
 
 
